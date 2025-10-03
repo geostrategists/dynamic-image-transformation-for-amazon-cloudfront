@@ -10,8 +10,8 @@ import {
   CfnParameter,
   CfnRule,
   Fn,
-  Stack,
-  StackProps,
+  NestedStack,
+  NestedStackProps,
   Tags,
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
@@ -21,13 +21,13 @@ import { CommonResources } from "./common-resources/common-resources-construct";
 import { FrontEndConstruct as FrontEnd } from "./front-end/front-end-construct";
 import { SolutionConstructProps, YesNo } from "./types";
 
-export interface ServerlessImageHandlerStackProps extends StackProps {
+export interface ServerlessImageHandlerStackProps extends NestedStackProps {
   readonly solutionId: string;
   readonly solutionName: string;
   readonly solutionVersion: string;
 }
 
-export class ServerlessImageHandlerStack extends Stack {
+export class ServerlessImageHandlerStack extends NestedStack {
   constructor(scope: Construct, id: string, props: ServerlessImageHandlerStackProps) {
     super(scope, id, props);
 
