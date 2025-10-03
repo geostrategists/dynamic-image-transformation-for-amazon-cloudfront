@@ -25,6 +25,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { CfnLogGroup } from "aws-cdk-lib/aws-logs";
 import { Aspects, Aws, CfnCondition, Duration, Fn, Lazy } from "aws-cdk-lib";
 import { CloudFrontToApiGatewayToLambda } from "@aws-solutions-constructs/aws-cloudfront-apigateway-lambda";
+import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 
 import { addCfnSuppressRules } from "../../utils/utils";
 import * as api from "aws-cdk-lib/aws-apigateway";
@@ -37,6 +38,8 @@ export interface ApiGatewayArchitectureProps extends BackEndProps {
   cachePolicy: CachePolicy;
   imageHandlerLambdaFunction: NodejsFunction;
   existingDistribution: IDistribution;
+  certificate?: ICertificate;
+  domainNames?: string[];
 }
 
 export class ApiGatewayArchitecture {
@@ -96,6 +99,8 @@ export class ApiGatewayArchitecture {
         { httpStatus: 503, ttl: Duration.minutes(10) },
         { httpStatus: 504, ttl: Duration.minutes(10) },
       ],
+      certificate: props.certificate,
+      domainNames: props.domainNames,
     };
 
     const apiGatewayProps: LambdaRestApiProps = {

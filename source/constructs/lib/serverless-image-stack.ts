@@ -188,6 +188,22 @@ export class ServerlessImageHandlerStack extends NestedStack {
       allowedPattern: "^$|^E[A-Z0-9]{8,}$",
     });
 
+    const customCertificateArnParameter = new CfnParameter(this, "CustomCertificateArnParameter", {
+      type: "String",
+      description:
+        "Optional: ARN of an ACM certificate in us-east-1 to use for custom domain names. If provided, domain names must also be specified. The certificate must be validated and match the domain names. Leave empty to use the default CloudFront certificate.",
+      default: "",
+      allowedPattern: "^$|^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+    });
+
+    const customDomainNamesParameter = new CfnParameter(this, "CustomDomainNamesParameter", {
+      type: "String",
+      description:
+        "Optional: Comma-separated list of custom domain names (aliases) for the CloudFront distribution. If provided, a custom certificate ARN must also be specified. These domain names must be configured in Route53 or your DNS provider to point to the CloudFront distribution. e.g. images.example.com,cdn.example.com",
+      default: "",
+      allowedPattern: "^$|^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*(?:\\s*,\\s*[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*)*$",
+    });
+
     /* eslint-disable no-new */
     new CfnRule(this, "ExistingDistributionIdRequiredRule", {
       ruleCondition: Fn.conditionEquals(useExistingCloudFrontDistribution.valueAsString, "Yes"),
@@ -196,6 +212,28 @@ export class ServerlessImageHandlerStack extends NestedStack {
           assert: Fn.conditionNot(Fn.conditionEquals(existingCloudFrontDistributionId.valueAsString, "")),
           assertDescription:
             "If 'UseExistingCloudFrontDistribution' is set to 'Yes', 'ExistingCloudFrontDistributionId' must be provided.",
+        },
+      ],
+    });
+
+    new CfnRule(this, "CustomCertificateRequiresDomainNamesRule", {
+      ruleCondition: Fn.conditionNot(Fn.conditionEquals(customCertificateArnParameter.valueAsString, "")),
+      assertions: [
+        {
+          assert: Fn.conditionNot(Fn.conditionEquals(customDomainNamesParameter.valueAsString, "")),
+          assertDescription:
+            "If 'CustomCertificateArn' is provided, 'CustomDomainNames' must also be provided.",
+        },
+      ],
+    });
+
+    new CfnRule(this, "CustomDomainNamesRequiresCertificateRule", {
+      ruleCondition: Fn.conditionNot(Fn.conditionEquals(customDomainNamesParameter.valueAsString, "")),
+      assertions: [
+        {
+          assert: Fn.conditionNot(Fn.conditionEquals(customCertificateArnParameter.valueAsString, "")),
+          assertDescription:
+            "If 'CustomDomainNames' is provided, 'CustomCertificateArn' must also be provided.",
         },
       ],
     });
@@ -239,6 +277,8 @@ export class ServerlessImageHandlerStack extends NestedStack {
       enableS3ObjectLambda: enableS3ObjectLambdaParameter.valueAsString,
       useExistingCloudFrontDistribution: useExistingCloudFrontDistribution.valueAsString as YesNo,
       existingCloudFrontDistributionId: existingCloudFrontDistributionId.valueAsString,
+      customCertificateArn: customCertificateArnParameter.valueAsString,
+      customDomainNames: customDomainNamesParameter.valueAsString,
     };
 
     const commonResources = new CommonResources(this, "CommonResources", {
@@ -372,6 +412,8 @@ export class ServerlessImageHandlerStack extends NestedStack {
               cloudFrontPriceClassParameter.logicalId,
               useExistingCloudFrontDistribution.logicalId,
               existingCloudFrontDistributionId.logicalId,
+              customCertificateArnParameter.logicalId,
+              customDomainNamesParameter.logicalId,
             ],
           },
         ],
@@ -415,6 +457,12 @@ export class ServerlessImageHandlerStack extends NestedStack {
           [existingCloudFrontDistributionId.logicalId]: {
             default: "Existing CloudFront Distribution Id",
           },
+          [customCertificateArnParameter.logicalId]: {
+            default: "Custom Certificate ARN",
+          },
+          [customDomainNamesParameter.logicalId]: {
+            default: "Custom Domain Names",
+          },
         },
       },
     };
@@ -455,6 +503,10 @@ export class ServerlessImageHandlerStack extends NestedStack {
       description: "CloudFront metrics dashboard for the distribution.",
       condition: deployCloudWatchDashboard,
     });
+    new CfnOutput(this, "CloudFrontDistributionId", {
+      value: backEnd.distributionId,
+      description: "ID of the CloudFront distribution used to serve images.",
+    })
 
     Aspects.of(this).add(new SuppressLambdaFunctionCfnRulesAspect());
     Tags.of(this).add("SolutionId", props.solutionId);

@@ -20,4 +20,6 @@ export interface SolutionConstructProps {
   readonly enableS3ObjectLambda: string;
   readonly useExistingCloudFrontDistribution: YesNo;
   readonly existingCloudFrontDistributionId: string;
+  readonly customCertificateArn: string;
+  readonly customDomainNames: string;
 }

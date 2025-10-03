@@ -29,12 +29,15 @@ import { BackEnd, BackEndProps } from "./back-end-construct";
 import { Effect, Policy, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { S3ObjectLambdaOrigin } from "./s3-object-lambda-origin";
 import { addCfnSuppressRules } from "../../utils/utils";
+import { Certificate, ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 
 export interface S3ObjectLambdaArchitectureProps extends BackEndProps {
   originRequestPolicy: OriginRequestPolicy;
   cachePolicy: CachePolicy;
   imageHandlerLambdaFunction: NodejsFunction;
   existingDistribution: IDistribution;
+  certificate?: ICertificate;
+  domainNames?: string[];
 }
 
 export class S3ObjectLambdaArchitecture {
@@ -164,6 +167,8 @@ export class S3ObjectLambdaArchitecture {
         { httpStatus: 503, ttl: Duration.minutes(10) },
         { httpStatus: 504, ttl: Duration.minutes(10) },
       ],
+      certificate: props.certificate,
+      domainNames: props.domainNames,
     };
 
     this.imageHandlerCloudFrontDistribution = new Distribution(

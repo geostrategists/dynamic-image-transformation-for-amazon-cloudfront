@@ -27,6 +27,7 @@ import { SolutionsMetrics, ExecutionDay } from "metrics-utils";
 import { ConditionAspect } from "../../utils/aspects";
 import { OperationalInsightsDashboard } from "../dashboard/ops-insights-dashboard";
 import { Dashboard } from "aws-cdk-lib/aws-cloudwatch";
+import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
 
 export interface BackEndProps extends SolutionConstructProps {
   readonly solutionVersion: string;
@@ -49,6 +50,7 @@ export class BackEnd extends Construct {
   public domainName: string;
   public olDomainName: string;
   public operationalDashboard: Dashboard;
+  public distributionId: string;
 
   constructor(scope: Construct, id: string, props: BackEndProps) {
     super(scope, id);
@@ -193,11 +195,20 @@ export class BackEnd extends Construct {
       distributionId: props.existingCloudFrontDistributionId,
     });
 
+    const certificate = props.customCertificateArn
+      ? Certificate.fromCertificateArn(this, "CustomCertificate", props.customCertificateArn)
+      : undefined;
+    const domainNames = props.customDomainNames
+      ? props.customDomainNames.split(",")
+      : undefined;
+
     const apiGatewayArchitecture = new ApiGatewayArchitecture(this, {
       imageHandlerLambdaFunction,
       originRequestPolicy,
       cachePolicy,
       existingDistribution,
+      certificate,
+      domainNames,
       ...props,
     });
 
@@ -206,6 +217,8 @@ export class BackEnd extends Construct {
       originRequestPolicy,
       cachePolicy,
       existingDistribution,
+      certificate,
+      domainNames,
       ...props,
     });
 
@@ -234,6 +247,8 @@ export class BackEnd extends Construct {
         apiGatewayArchitecture.imageHandlerCloudFrontDistribution.distributionId
       ).toString()
     ).toString();
+
+    this.distributionId = conditionalCloudFrontDistributionId;
 
     solutionsMetrics.addLambdaInvocationCount({ functionName: imageHandlerLambdaFunction.functionName });
     solutionsMetrics.addLambdaBilledDurationMemorySize({
